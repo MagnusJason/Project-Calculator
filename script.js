@@ -168,6 +168,29 @@ function handleEquals() {
     }
 }
 
+// Handle backspace
+function handleBackspace() {
+    // Don't allow backspace if we're in the middle of an operation waiting for second number
+    // or if display shows an error message
+    const inputValue = parseFloat(displayValue);
+    if (waitingForSecondNumber || isNaN(inputValue)) {
+        return;
+    }
+    
+    // If display is being reset (after equals), don't allow backspace
+    if (shouldResetDisplay) {
+        return;
+    }
+    
+    // Remove last character, or set to "0" if only one character remains
+    if (displayValue.length > 1) {
+        displayValue = displayValue.slice(0, -1);
+    } else {
+        displayValue = '0';
+    }
+    updateDisplay(displayValue);
+}
+
 // Handle clear
 function handleClear() {
     displayValue = '0';
@@ -199,6 +222,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Clear button
     document.querySelector('.clear').addEventListener('click', handleClear);
+    
+    // Backspace button
+    document.querySelector('.backspace').addEventListener('click', handleBackspace);
     
     // Decimal button
     document.querySelector('.decimal').addEventListener('click', inputDecimal);

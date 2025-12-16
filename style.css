@@ -80,7 +80,6 @@ body {
 
 .button.equals {
     background-color: #34c759;
-    grid-row: span 2;
 }
 
 .button.equals:hover {
@@ -89,10 +88,19 @@ body {
 
 .button.clear {
     background-color: #ff3b30;
+    grid-column: span 2;
 }
 
 .button.clear:hover {
     background-color: #ff5c52;
+}
+
+.button.backspace {
+    background-color: #505050;
+}
+
+.button.backspace:hover {
+    background-color: #606060;
 }
 
 .button.digit {
