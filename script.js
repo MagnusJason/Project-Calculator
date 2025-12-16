@@ -13,14 +13,37 @@ function multiply(a, b) {
 
 function divide(a, b) {
     if (b === 0) {
-        throw new Error("Division by zero! Nice try, but you can't break the laws of mathematics. 😏");
+        throw new Error("Cannot divide by zero");
     }
     return a / b;
 }
 
+// Normalize operator symbols
+function normalizeOperator(op) {
+    const operatorMap = {
+        '÷': '/',
+        '×': '*',
+        '−': '-',
+        '+': '+'
+    };
+    return operatorMap[op] || op;
+}
+
+// Get display operator symbol
+function getDisplayOperator(op) {
+    const displayMap = {
+        '/': '÷',
+        '*': '×',
+        '-': '−',
+        '+': '+'
+    };
+    return displayMap[op] || op;
+}
+
 // Operation function
 function operate(operator, a, b) {
-    switch(operator) {
+    const normalizedOp = normalizeOperator(operator);
+    switch(normalizedOp) {
         case '+':
             return add(a, b);
         case '-':
@@ -41,27 +64,34 @@ let operator = null;
 let waitingForSecondNumber = false;
 let shouldResetDisplay = false;
 
-const display = document.querySelector('.display');
+const displayResult = document.querySelector('.display-result');
+const displayPreview = document.querySelector('.display-preview');
 
 // Update display
 function updateDisplay(value) {
-    display.textContent = value;
+    displayResult.textContent = value;
+}
+
+// Update preview
+function updatePreview(text) {
+    displayPreview.textContent = text || '';
 }
 
 // Handle digit input
 function inputDigit(digit) {
     if (shouldResetDisplay) {
-        // When result is displayed and user enters a new digit, start fresh
         displayValue = '0';
         firstNumber = null;
         operator = null;
         waitingForSecondNumber = false;
         shouldResetDisplay = false;
+        updatePreview('');
     }
     
     if (waitingForSecondNumber) {
         displayValue = digit;
         waitingForSecondNumber = false;
+        updatePreview('');
     } else {
         displayValue = displayValue === '0' ? digit : displayValue + digit;
     }
@@ -73,11 +103,13 @@ function inputDecimal() {
     if (shouldResetDisplay) {
         displayValue = '0';
         shouldResetDisplay = false;
+        updatePreview('');
     }
     
     if (waitingForSecondNumber) {
         displayValue = '0.';
         waitingForSecondNumber = false;
+        updatePreview('');
     } else if (displayValue.indexOf('.') === -1) {
         displayValue += '.';
     }
@@ -88,56 +120,48 @@ function inputDecimal() {
 function handleOperator(nextOperator) {
     const inputValue = parseFloat(displayValue);
     
-    // If display contains non-numeric value (like error message), don't proceed
     if (isNaN(inputValue)) {
         return;
     }
     
-    // Reset shouldResetDisplay flag when operator is pressed
-    // (allows continuing calculation after equals)
     shouldResetDisplay = false;
+    const normalizedOperator = normalizeOperator(nextOperator);
     
-    // If we already have an operator and user presses another operator consecutively,
-    // just update the operator without evaluating
     if (operator && waitingForSecondNumber) {
-        // Consecutive operator presses - just update the operator
-        operator = nextOperator;
+        operator = normalizedOperator;
+        updatePreview(firstNumber + ' ' + getDisplayOperator(normalizedOperator));
         return;
     }
     
     if (firstNumber === null) {
         firstNumber = inputValue;
     } else if (operator) {
-        // We have both numbers and an operator - evaluate before applying new operator
         try {
             const result = operate(operator, firstNumber, inputValue);
-            
-            // Round to avoid overflow
             const roundedResult = Math.round(result * 100000000) / 100000000;
             
             displayValue = String(roundedResult);
             updateDisplay(displayValue);
             firstNumber = roundedResult;
         } catch (error) {
-            // Handle division by zero
             updateDisplay(error.message);
-            // Reset calculator state
             firstNumber = null;
             operator = null;
             waitingForSecondNumber = false;
             shouldResetDisplay = true;
+            updatePreview('');
             return;
         }
     }
     
     waitingForSecondNumber = true;
-    operator = nextOperator;
+    operator = normalizedOperator;
+    updatePreview(displayValue + ' ' + getDisplayOperator(normalizedOperator));
 }
 
 // Handle equals
 function handleEquals() {
     if (firstNumber === null || operator === null || waitingForSecondNumber) {
-        // Don't evaluate if we don't have all necessary values
         return;
     }
     
@@ -145,44 +169,45 @@ function handleEquals() {
     
     try {
         const result = operate(operator, firstNumber, inputValue);
-        
-        // Round to avoid overflow
         const roundedResult = Math.round(result * 100000000) / 100000000;
+        
+        // Show calculation in preview
+        updatePreview(firstNumber + ' ' + getDisplayOperator(operator) + ' ' + inputValue);
         
         displayValue = String(roundedResult);
         updateDisplay(displayValue);
         
-        // Reset state
         firstNumber = null;
         operator = null;
         waitingForSecondNumber = false;
         shouldResetDisplay = true;
     } catch (error) {
-        // Handle division by zero
         updateDisplay(error.message);
-        // Reset calculator state
         firstNumber = null;
         operator = null;
         waitingForSecondNumber = false;
+        shouldResetDisplay = true;
+        updatePreview('');
+    }
+}
+
+// Handle percentage
+function handlePercentage() {
+    const value = parseFloat(displayValue);
+    if (!isNaN(value)) {
+        displayValue = String(value / 100);
+        updateDisplay(displayValue);
         shouldResetDisplay = true;
     }
 }
 
 // Handle backspace
 function handleBackspace() {
-    // Don't allow backspace if we're in the middle of an operation waiting for second number
-    // or if display shows an error message
     const inputValue = parseFloat(displayValue);
-    if (waitingForSecondNumber || isNaN(inputValue)) {
+    if (waitingForSecondNumber || isNaN(inputValue) || shouldResetDisplay) {
         return;
     }
     
-    // If display is being reset (after equals), don't allow backspace
-    if (shouldResetDisplay) {
-        return;
-    }
-    
-    // Remove last character, or set to "0" if only one character remains
     if (displayValue.length > 1) {
         displayValue = displayValue.slice(0, -1);
     } else {
@@ -199,6 +224,13 @@ function handleClear() {
     waitingForSecondNumber = false;
     shouldResetDisplay = false;
     updateDisplay(displayValue);
+    updatePreview('');
+}
+
+// Handle parentheses (placeholder - not implemented in basic calculator)
+function handleParentheses() {
+    // Placeholder for future implementation
+    console.log('Parentheses functionality not yet implemented');
 }
 
 // Event listeners
@@ -228,5 +260,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Decimal button
     document.querySelector('.decimal').addEventListener('click', inputDecimal);
+    
+    // Percentage button
+    document.querySelector('.percentage').addEventListener('click', handlePercentage);
+    
+    // Parentheses button
+    document.querySelector('.parentheses').addEventListener('click', handleParentheses);
 });
-
